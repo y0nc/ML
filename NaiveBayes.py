@@ -9,7 +9,9 @@ class NaiveBayes:
         def __init__(self) -> None:
             self.is_discrate = True
             self.cnt = {}
+
         is_discrate, cnt, = None, None
+
     data = []  # 统计信息
     Y = []  # 标签集
     tot, ycnt = 0, {}  # 统计信息
@@ -36,12 +38,11 @@ class NaiveBayes:
                 for y in self.Y:
                     self.data[-1].cnt[y] = {}
                     for xi in Dy[y][attr]:
-                        self.data[-1].cnt[y][xi] = self.data[-1].cnt[y].get(
-                            xi, 0) + 1
+                        self.data[-1].cnt[y][xi] = self.data[-1].cnt[y].get(xi, 0) + 1
 
     def predict(self, x):
         laplace = False
-        res, maxp = None, .0
+        res, maxp = None, 0.0
         # 判断是否需要laplace修正
         for y in self.Y:
             for xi, i in zip(x, range(len(x))):
@@ -49,40 +50,47 @@ class NaiveBayes:
                     if self.data[i].cnt[y].get(xi, -1) == -1:
                         laplace = True
 
-        if laplace:
-            for y in self.Y:
-                p = (self.ycnt[y]+1)/(self.tot+len(self.Y))
-                for xi, i in zip(x, range(len(x))):
-                    if self.data[i].is_discrate:
-                        p *= (self.data[i].cnt[y].get(xi, 0) + 1) / \
-                            (self.ycnt[y]+self.Ni[i])
+        for y in self.Y:
+            p = 1.0
+            for xi, i in zip(x, range(len(x))):
+                if self.data[i].is_discrate:
+                    if laplace:
+                        p *= (self.data[i].cnt[y].get(xi, 0) + 1) / (
+                            self.ycnt[y] + self.Ni[i]
+                        )
                     else:
-                        p *= st.norm.pdf(x=xi,
-                                         loc=self.data[i].cnt[y][0], scale=self.data[i].cnt[y][1])
-                if p > maxp:
-                    maxp, res = p, y
-        else:
-            for y in self.Y:
-                p = self.ycnt[y]/self.tot
-                for xi, i in zip(x, range(len(x))):
-                    if self.data[i].is_discrate:
-                        p *= self.data[i].cnt[y][xi]/self.ycnt[y]
-                    else:
-                        p *= st.norm.pdf(x=xi,
-                                         loc=self.data[i].cnt[y][0], scale=self.data[i].cnt[y][1])
-                if p > maxp:
-                    maxp, res = p, y
+                        p *= self.data[i].cnt[y][xi] / self.ycnt[y]
+                else:
+                    p *= st.norm.pdf(
+                        x=xi, loc=self.data[i].cnt[y][0], scale=self.data[i].cnt[y][1]
+                    )
+
+            if laplace:
+                p *= (self.ycnt[y] + 1) / (self.tot + len(self.Y))
+            else:
+                p *= self.ycnt[y] / self.tot
+
+            if p > maxp:
+                maxp, res = p, y
 
         return res
 
 
 df = pd.read_csv("watermelon3_0_Ch.csv")
-df.drop('编号', axis=1, inplace=True)
+df.drop("编号", axis=1, inplace=True)
 t0 = time()
 nb = NaiveBayes(df)
-print('训练消耗时间: {:.3f}S'.format(time()-t0))
+print("训练消耗时间: {:.3f}S".format(time() - t0))
 
+precision = 0.0
+
+t0 = time()
 for i in range(len(df)):
     x = df.iloc[i, :].tolist()
     y = nb.predict(x[:-1])
-    print("{}: {}\n真实分类: {}, 预测结果: {}".format(i+1, x, x[-1], y))
+    print("{}: {}\n真实分类: {}, 预测结果: {}".format(i + 1, x, x[-1], y))
+    if x[-1] == y:
+        precision += 1 / (len(df) + 1)
+
+print("准确率: {:.3f}".format(precision))
+print("预测消耗时间: {:.3f}S".format(time() - t0))
