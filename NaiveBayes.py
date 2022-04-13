@@ -51,7 +51,7 @@ class NaiveBayes:
     def predict(self, x):
         laplace = False
         res, maxp = None, 0.0
-        # 判断是否需要laplace修正
+        # is need laplacian correction
         for y in self.Y:
             for xi, i in zip(x, range(len(x))):
                 if self.data[i].is_discrate:
