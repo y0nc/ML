@@ -1,9 +1,6 @@
 from numpy import float64
-import numpy as np
 import pandas as pd
-from time import time
 from scipy import stats as st
-from sklearn import datasets
 
 
 class NaiveBayes:
