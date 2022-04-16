@@ -1,6 +1,4 @@
-from numpy import float64, unique, sort, log2
-import pandas as pd
-from time import time
+from numpy import argmax, float64, unique, sort, log2
 
 
 class DecisionTree:
@@ -148,6 +146,8 @@ class DecisionStump:
     def malloc(self):
         self.dic = {}
 
+    label_key = None
+    p_key = "P"
     a, ia = None, None
     thresh = None
     dic = None
@@ -159,10 +159,11 @@ class DecisionStump:
             return [D.loc[D[a] <= thresh], D.loc[D[a] > thresh]]
 
     def Ent(self, D):
-        y = D.iloc[:, -1]
+        Y = unique(D[self.label_key])
         res = 0.0
-        for cnt in y.value_counts():
-            p = cnt / len(y)
+        for y in Y:
+            Dv = D.loc[D[self.label_key] == y]
+            p = sum(Dv[self.p_key]) / sum(D[self.p_key])
             res += -p * log2(p)
         return res
 
@@ -171,16 +172,26 @@ class DecisionStump:
         gain = self.Ent(D)
         IVa = 0.0
         for Dv in Dvs:
-            p = len(Dv) / len(D)
+            p = sum(Dv[self.p_key]) / sum(D[self.p_key])
             gain += -p * self.Ent(Dv)
             IVa += -p * log2(p)
         gain_ratio = gain / IVa
         return gain, gain_ratio
 
-    def __init__(self, D) -> None:
+    def ymost(self, D):
+        Dvs = self.divide(D, self.label_key)
+        Y = [y for y in set(D[self.label_key])]
+        sump = [sum(Dv[self.p_key]) for Dv in Dvs]
+        return Y[argmax(sump)]
+
+    def __init__(self, D, P=None) -> None:
         self.malloc()
+        self.label_key = D.keys()[-1]
         A = D.keys()[:-1]
         m = len(A)
+        if P == None:
+            P = [1 / m for i in range(m)]
+        D.insert(loc=len(D.keys()), column=self.p_key, value=P)
         gain_info = []  # gain,gain_ratio,thresh
         mean = 0.0
         for a in A:
@@ -209,16 +220,11 @@ class DecisionStump:
         if self.thresh == None:
             Dvs = self.divide(D, self.a)
             for Dv in Dvs:
-                cnt = Dv.iloc[:, -1].value_counts()
-                av = Dv[self.a].tolist()[0]
-                y = cnt.keys()[cnt.argmax()]
-                self.dic[av] = y
+                self.dic[av] = self.ymost(Dv)
         else:
             Dvs = self.divide(D, self.a, self.thresh)
             for Dv, i in zip(Dvs, range(len(Dvs))):
-                cnt = Dv.iloc[:, -1].value_counts()
-                y = cnt.keys()[cnt.argmax()]
-                self.dic[i] = y
+                self.dic[i] = self.ymost(Dv)
 
     def predict(self, x):
         if self.thresh == None:
